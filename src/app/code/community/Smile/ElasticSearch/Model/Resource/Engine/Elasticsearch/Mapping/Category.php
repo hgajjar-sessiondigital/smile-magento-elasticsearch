@@ -29,6 +29,11 @@ class Smile_ElasticSearch_Model_Resource_Engine_Elasticsearch_Mapping_Category
      */
     protected $_entityType = 'catalog_category';
 
+    /**
+     * @var Mage_Eav_Model_Entity_Attribute
+     */
+    protected $_isActiveAttribute;
+
 
     /**
      * Get mapping properties as stored into the index
@@ -76,6 +81,12 @@ class Smile_ElasticSearch_Model_Resource_Engine_Elasticsearch_Mapping_Category
             ->limit($limit)
             ->order('e.entity_id');
 
+        // filter active categories
+        $isActiveAttribute = $this->_getIsActiveAttribute();
+        $isActiveValueTable = $isActiveAttribute->getBackendTable();
+        $select->joinLeft($isActiveValueTable, 'e.entity_id = '.$isActiveValueTable.'.entity_id AND '.$isActiveValueTable.'.attribute_id = '.$isActiveAttribute->getId())
+            ->where($isActiveValueTable.'.value = ?', 1);
+
         $result = array();
         $values = $adapter->fetchAll($select);
         foreach ($values as $value) {
@@ -83,5 +94,18 @@ class Smile_ElasticSearch_Model_Resource_Engine_Elasticsearch_Mapping_Category
         }
 
         return $result;
+    }
+
+    /**
+     * Get is_active attribute for category entity
+     *
+     * @return Mage_Eav_Model_Entity_Attribute
+     */
+    protected function _getIsActiveAttribute()
+    {
+        if ($this->_isActiveAttribute == null) {
+            $this->_isActiveAttribute = Mage::getModel('eav/entity_attribute')->loadByCode($this->_entityType, 'is_active');
+        }
+        return $this->_isActiveAttribute;
     }
 }
